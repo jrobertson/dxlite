@@ -118,6 +118,23 @@ class DxLite
   
   alias to_a records
   
+  def to_xml()
+        
+    root_name = schema()[/^\w+/]
+    record_name = schema()[/(?<=\/)[^\(]+/]
+    
+    h = {
+      root_name.to_sym =>
+      {
+        summary: @summary,
+        records: @records.map {|h| {record_name.to_sym => h} }
+      }
+    }
+
+    Rexle.new(RexleBuilder.new(h, debug: false).to_a).xml pretty: true
+    
+  end
+  
   # Updates a record from an id and a hash containing field name and field value.
   #  dynarex.update 4, name: Jeff, age: 38  
   
