@@ -7,6 +7,7 @@ require 'json'
 require 'recordx'
 require 'rxfhelper'
 
+
 class DxLite
   using ColouredText
 
@@ -24,8 +25,11 @@ class DxLite
       
     when :file
       
-      h = JSON.parse(buffer, symbolize_names: true)
+      h1 = JSON.parse(buffer, symbolize_names: true)
+      puts 'h1:' + h1.inspect if @debug
       @filepath = s
+      
+      h = h1[h1.keys.first]
       
       @summary = h[:summary]
       @records = h[:records]
@@ -38,6 +42,13 @@ class DxLite
     end
     
     @schema = @summary[:schema]
+    
+    summary_attributes = {
+      recordx_type: 'dynarex',
+      default_key: @schema[/(?<=\()\w+/],
+    }
+    
+    @summary.merge!(summary_attributes)
 
     summary = @summary[:schema][/(?<=\[)[^\]]+/]
     
@@ -84,13 +95,29 @@ class DxLite
   def all()
 
     @records.map do |h|
-      RecordX.new(h, self, h.object_id, h[:created], h[:last_modified])
+      
+      puts 'h: ' + h.inspect if @debug
+      RecordX.new(h[:body], self, h[:id], h[:created], 
+                  h[:last_modified])
     end
 
   end  
   
-  def create(h)
-    @records << h
+  def delete(id)
+    found = @records.find {|x| x[:id] == id}
+    @records.delete found if found
+  end
+  
+  def create(h, id: nil, custom_attributes: {created: Time.now})
+    
+    id ||= @records.map {|x| x[:id].to_i}.max.to_i + 1
+    h2 = custom_attributes
+    @records << {id: id.to_s, created: h2[:created], last_modified: nil, body: h}
+  end
+  
+  def inspect()
+    "#<DxLite:%s @debug=%s, @summary=%s, ...>" % [object_id, @debug, 
+                                                  @summary.inspect]
   end
   
   # Parses 1 or more lines of text to create or update existing records.
@@ -104,7 +131,11 @@ class DxLite
         self.schema = "items/item(%s)" % cols.join(', ')
       end
         
-      obj.each {|x| self.create x }
+      obj.each do |x|
+        puts 'x: ' + x.inspect if @debug
+        self.create x, id: nil
+      end
+      
       return self 
       
     end  
@@ -113,13 +144,13 @@ class DxLite
   alias import parse
 
   def save(file=@filepath)
-    File.write file, {summary: @summary, records: @records}.to_json
+    File.write file, to_json()
   end
   
   alias to_a records
   
-  def to_xml()
-        
+  def to_h()
+    
     root_name = schema()[/^\w+/]
     record_name = schema()[/(?<=\/)[^\(]+/]
     
@@ -130,8 +161,38 @@ class DxLite
         records: @records.map {|h| {record_name.to_sym => h} }
       }
     }
+    
+  end
+  
+  def to_json(pretty: true)
+    pretty ? JSON.pretty_generate(to_h()) : to_h()
+  end
+  
+  def to_xml()
+    
+    root_name = schema()[/^\w+/]
+    record_name = schema()[/(?<=\/)[^\(]+/]
+    
+    a = RexleBuilder.build  do |xml|
+      
+      xml.send(root_name.to_sym) do
+        xml.summary({}, @summary)
+        xml.records do
+          
+          all().each do |x|
+            
+            h = {id: x.id, created: x.created, last_modified: x.last_modified}          
+            puts 'x.to_h: ' + x.to_h.inspect if @debug
+            xml.send(record_name.to_sym, h, x.to_h)
+            
+          end
+          
+        end
+      end
+    end
 
-    Rexle.new(RexleBuilder.new(h, debug: false).to_a).xml pretty: true
+    Rexle.new(a).xml pretty: true    
+        
     
   end
   
@@ -146,8 +207,8 @@ class DxLite
       puts ('obj.class: '  + obj.class.inspect).debug
     end
     
-    r = @records.find {|x| x.object_id == id}
-    r.merge!(obj)
+    r = @records.find {|x| x[:id] == id}
+    r[:body].merge!(obj)
   end
   
 end
