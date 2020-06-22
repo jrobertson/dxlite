@@ -13,9 +13,9 @@ class DxLite
   attr_accessor :summary
   attr_reader :records
 
-  def initialize(s, debug: false)
+  def initialize(s, filepath: nil, debug: false)
 
-    @debug = debug
+    @filepath, @debug = filepath, debug
 
     buffer, type = RXFHelper.read(s)
     puts 'type: ' + type.inspect if @debug
@@ -39,8 +39,11 @@ class DxLite
     
     @schema = @summary[:schema]
 
-    @summary.merge! @summary[:schema][/(?<=\[)[^\]]+/].split(',')\
-        .map {|x|[x.strip, nil] }.to_h
+    summary = @summary[:schema][/(?<=\[)[^\]]+/]
+    
+    if summary then
+      @summary.merge! summary.split(',').map {|x|[x.strip, nil] }.to_h
+    end
     
     # for each summary item create get and set methods
     
@@ -102,8 +105,10 @@ class DxLite
   alias import parse
 
   def save(file=@filepath)
-    File.write file, @records.to_json
+    File.write file, {summary: @summary, records: @records}.to_json
   end
+  
+  alias to_a records
   
   # Updates a record from an id and a hash containing field name and field value.
   #  dynarex.update 4, name: Jeff, age: 38  
