@@ -32,7 +32,7 @@ class DxLite
       h = h1[h1.keys.first]
       
       @summary = h[:summary]
-      @records = h[:records]
+      @records = h[:records].map {|x| x[x.keys.first]}
     
     when :text
       
@@ -74,17 +74,13 @@ class DxLite
 
       define_singleton_method ('find_all_by_' + x).to_sym do |value|
         
-        @records.select do |rec| 
-          value.is_a?(Regexp) ? rec[x.to_sym] =~ value : rec[x.to_sym] == value
-        end
+        @records.select {|rec| find_record(rec[:body], value, x) }
         
       end
 
       define_singleton_method ('find_by_' + x).to_sym do |value|
         
-        @records.find do |rec| 
-          value.is_a?(Regexp) ? rec[x.to_sym] =~ value : rec[x.to_sym] == value
-        end
+        @records.find {|rec| find_record(rec[:body], value, x) }
         
       end
 
@@ -209,6 +205,12 @@ class DxLite
     
     r = @records.find {|x| x[:id] == id}
     r[:body].merge!(obj)
+  end
+  
+  private
+  
+  def find_record(rec, value, x)
+    value.is_a?(Regexp) ? rec[x.to_sym] =~ value : rec[x.to_sym] == value    
   end
   
 end
