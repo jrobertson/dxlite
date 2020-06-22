@@ -62,11 +62,19 @@ class DxLite
     @fields.each do |x|
 
       define_singleton_method ('find_all_by_' + x).to_sym do |value|
-        @records.select {|rec| rec[x.to_sym] == value }
+        
+        @records.select do |rec| 
+          value.is_a?(Regexp) ? rec[x.to_sym] =~ value : rec[x.to_sym] == value
+        end
+        
       end
 
       define_singleton_method ('find_by_' + x).to_sym do |value|
-        @records.find {|rec| rec[x.to_sym] == value }
+        
+        @records.find do |rec| 
+          value.is_a?(Regexp) ? rec[x.to_sym] =~ value : rec[x.to_sym] == value
+        end
+        
       end
 
     end

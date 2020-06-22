@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'dxlite'
-  s.version = '0.2.1'
+  s.version = '0.2.2'
   s.summary = 'Handles Dynarex documents (in JSON format) faster and ' + 
       'with less overheads.'
   s.authors = ['James Robertson']
