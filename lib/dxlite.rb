@@ -20,26 +20,25 @@ class DxLite
 
     buffer, type = RXFHelper.read(s)
     puts 'type: ' + type.inspect if @debug
-    
+    puts 'buffer: ' + buffer.inspect if @debug
+        
     case type
       
     when :file
       
-      h1 = JSON.parse(buffer, symbolize_names: true)
-      puts 'h1:' + h1.inspect if @debug
-      @filepath = s
+      read buffer
       
-      h = h1[h1.keys.first]
-      
-      @summary = h[:summary]
-      @records = h[:records].map {|x| x[x.keys.first]}
-    
     when :text
       
       @summary = {schema: s}
       @records = []
       
+    when :url
+      
+      read buffer      
+      
     end
+    
     
     @schema = @summary[:schema]
     
@@ -211,6 +210,18 @@ class DxLite
   
   def find_record(rec, value, x)
     value.is_a?(Regexp) ? rec[x.to_sym] =~ value : rec[x.to_sym] == value    
+  end
+  
+  def read(buffer)
+    
+    h1 = JSON.parse(buffer, symbolize_names: true)
+    puts 'h1:' + h1.inspect if @debug
+    
+    h = h1[h1.keys.first]
+    
+    @summary = h[:summary]
+    @records = h[:records].map {|x| x[x.keys.first]}
+    
   end
   
 end
