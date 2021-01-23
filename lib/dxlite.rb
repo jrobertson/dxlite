@@ -14,14 +14,17 @@ class DxLite
   attr_accessor :summary
   attr_reader :records
 
-  def initialize(s, filepath: nil, debug: false)
+  def initialize(s=nil, filepath: nil, debug: false)
 
     @filepath, @debug = filepath, debug
 
+    return unless s
     buffer, type = RXFHelper.read(s)
     puts 'type: ' + type.inspect if @debug
     puts 'buffer: ' + buffer.inspect if @debug
-        
+
+    @records = []
+          
     case type
       
     when :file
@@ -31,7 +34,7 @@ class DxLite
     when :text
       
       @summary = {schema: s}
-      @records = []
+
       
     when :url
       
@@ -39,51 +42,28 @@ class DxLite
       
     end
     
-    
+    puts '@summary: ' + @summary.inspect
     @schema = @summary[:schema]
     
     summary_attributes = {
       recordx_type: 'dynarex',
-      default_key: @schema[/(?<=\()\w+/],
+      default_key: @schema[/(?<=\()\w+/]
     }
-    
+
+    puts 'before merge' if @debug
     @summary.merge!(summary_attributes)
 
     summary = @summary[:schema][/(?<=\[)[^\]]+/]
     
     if summary then
-      @summary.merge! summary.split(',').map {|x|[x.strip, nil] }.to_h
-    end
-    
-    # for each summary item create get and set methods
-    
-    @summary.each do |key, value|
-      
-      define_singleton_method(key) { @summary[key] }
-      
-      define_singleton_method (key.to_s + '=').to_sym do |value|
-        @summary[key] = value
-      end      
-      
-    end
-    
-    @fields = @summary[:schema][/(?<=\()[^\)]+/].split(',').map(&:strip)
 
-    @fields.each do |x|
-
-      define_singleton_method ('find_all_by_' + x).to_sym do |value|
-        
-        @records.select {|rec| find_record(rec[:body], value, x) }
-        
+      summary.split(/ *, */).each do |x|
+        @summary[x] = nil unless @summary[x]
       end
-
-      define_singleton_method ('find_by_' + x).to_sym do |value|
-        
-        @records.find {|rec| find_record(rec[:body], value, x) }
-        
-      end
-
-    end
+      
+    end    
+    
+    make_methods()    
 
   end  
 
@@ -103,11 +83,17 @@ class DxLite
     @records.delete found if found
   end
   
-  def create(h, id: nil, custom_attributes: {created: Time.now})
+  def create(rawh, id: nil, custom_attributes: {created: Time.now})
     
     id ||= @records.map {|x| x[:id].to_i}.max.to_i + 1
     h2 = custom_attributes
-    @records << {id: id.to_s, created: h2[:created], last_modified: nil, body: h}
+    h = fields.map {|x| [x.to_sym, nil] }.to_h.merge(rawh)
+    @records << {id: id.to_s, created: h2[:created], last_modified: nil, 
+                 body: h}
+  end
+  
+  def fields()
+    @fields
   end
   
   def inspect()
@@ -127,7 +113,7 @@ class DxLite
       end
         
       obj.each do |x|
-        puts 'x: ' + x.inspect if @debug
+        #puts 'x: ' + x.inspect if @debug
         self.create x, id: nil
       end
       
@@ -137,12 +123,45 @@ class DxLite
   end
   
   alias import parse
+  
+  def parse_xml(buffer)
+    
+    doc = Rexle.new(buffer)
+    
+    asummary = doc.root.xpath('summary/*').map do |node|
+      puts 'node: '  + node.xml.inspect if @debug
+      [node.name, node.text.to_s]
+    end
+    
+    summary = Hash[asummary]
+    summary[:schema] = summary['schema']
+    %w(recordx_type format_mask schema).each {|x| summary.delete x}
+    
+    schema = summary[:schema]
+    puts 'schema: ' + schema.inspect if @debug
+    
+    @fields = schema[/\(([^\)]+)/,1].split(/ *, +/)
+    puts 'fields: ' + @fields.inspect if @debug
+    
+    a = doc.root.xpath('records/*').each do |node|
+      
+      h = Hash[@fields.map {|field| [field.to_sym, node.text(field).to_s] }]
+      self.create h, id: nil
+      
+    end
+
+    @summary = summary
+    
+  end
 
   def save(file=@filepath)
-    File.write file, to_json()
+    s = File.extname(file) == '.json' ? to_json() : to_xml()
+    File.write file, s
   end
   
-  alias to_a records
+  def to_a()
+    @records.map {|x| x[:body]}
+  end
   
   def to_h()
     
@@ -212,16 +231,58 @@ class DxLite
     value.is_a?(Regexp) ? rec[x.to_sym] =~ value : rec[x.to_sym] == value    
   end
   
+  def make_methods()
+    
+    # for each summary item create get and set methods
+    
+    @summary.each do |key, value|
+      
+      define_singleton_method(key) { @summary[key] }
+      
+      define_singleton_method (key.to_s + '=').to_sym do |value|
+        @summary[key] = value
+      end      
+      
+    end
+    
+    @fields = @summary[:schema][/(?<=\()[^\)]+/].split(',').map(&:strip)
+
+    @fields.each do |x|
+
+      define_singleton_method ('find_all_by_' + x).to_sym do |value|
+        
+        @records.select {|rec| find_record(rec[:body], value, x) }
+        
+      end
+
+      define_singleton_method ('find_by_' + x).to_sym do |value|
+        
+        @records.find {|rec| find_record(rec[:body], value, x) }
+        
+      end
+
+    end
+    
+  end
+  
   def read(buffer)
     
-    h1 = JSON.parse(buffer, symbolize_names: true)
-    puts 'h1:' + h1.inspect if @debug
+    if buffer[0] == '<' then
     
-    h = h1[h1.keys.first]
+      parse_xml buffer
+      
+    else
+      
+      h1 = JSON.parse(buffer, symbolize_names: true)
+      #puts 'h1:' + h1.inspect if @debug
+      
+      h = h1[h1.keys.first]
     
-    @summary = h[:summary]
-    @records = h[:records].map {|x| x[x.keys.first]}
-    
+     @summary = h[:summary]
+     @records = h[:records].map {|x| x[x.keys.first]}
+     
+    end
+  
   end
   
 end
