@@ -14,12 +14,15 @@ class DxLite
   attr_accessor :summary
   attr_reader :records
 
-  def initialize(s=nil, filepath: nil, debug: false)
+  def initialize(s=nil, autosave: false, debug: false)
 
-    @filepath, @debug = filepath, debug
+    @autosave, @debug = autosave, debug
 
     return unless s
     buffer, type = RXFHelper.read(s)
+    
+    @filepath = s if type == :file or type == :dfs
+      
     puts 'type: ' + type.inspect if @debug
     puts 'buffer: ' + buffer.inspect if @debug
 
@@ -80,7 +83,12 @@ class DxLite
   
   def delete(id)
     found = @records.find {|x| x[:id] == id}
-    @records.delete found if found
+    
+    if found then
+      @records.delete found 
+      save() if @autosave
+    end
+    
   end
   
   def create(rawh, id: nil, custom_attributes: {created: Time.now})
@@ -90,6 +98,8 @@ class DxLite
     h = fields.map {|x| [x.to_sym, nil] }.to_h.merge(rawh)
     @records << {id: id.to_s, created: h2[:created], last_modified: nil, 
                  body: h}
+    
+    save() if @autosave
   end
   
   def fields()
@@ -155,6 +165,9 @@ class DxLite
   end
 
   def save(file=@filepath)
+    
+    return unless file
+    
     s = File.extname(file) == '.json' ? to_json() : to_xml()
     File.write file, s
   end
@@ -222,7 +235,14 @@ class DxLite
     end
     
     r = @records.find {|x| x[:id] == id}
-    r[:body].merge!(obj)
+    
+    if r then
+      
+      r[:body].merge!(obj)
+      save() if @autosave
+      
+    end
+    
   end
   
   private
