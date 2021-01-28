@@ -11,7 +11,7 @@ require 'rxfhelper'
 class DxLite
   using ColouredText
 
-  attr_accessor :summary
+  attr_accessor :summary, :filepath
   attr_reader :records
 
   def initialize(s=nil, autosave: false, debug: false)
@@ -167,6 +167,7 @@ class DxLite
   def save(file=@filepath)
     
     return unless file
+    @filepath = file
     
     s = File.extname(file) == '.json' ? to_json() : to_xml()
     File.write file, s
@@ -297,9 +298,20 @@ class DxLite
       #puts 'h1:' + h1.inspect if @debug
       
       h = h1[h1.keys.first]
-    
-     @summary = h[:summary]
-     @records = h[:records].map {|x| x[x.keys.first]}
+          
+      @summary = {}
+      
+      h[:summary].each do |key, value|
+        
+        if %i(recordx_type format_mask schema).include? key then
+          @summary[key] = value
+        else        
+          @summary[key.to_s] = value
+        end
+        
+      end
+      
+      @records = h[:records].map {|x| x[x.keys.first]}
      
     end
   
