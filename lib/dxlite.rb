@@ -249,7 +249,7 @@ class DxLite
   private
   
   def find_record(rec, value, x)
-    value.is_a?(Regexp) ? rec[x.to_sym] =~ value : rec[x.to_sym] == value    
+    r = value.is_a?(Regexp) ? rec[x.to_sym] =~ value : rec[x.to_sym] == value    
   end
   
   def make_methods()
@@ -272,13 +272,18 @@ class DxLite
 
       define_singleton_method ('find_all_by_' + x).to_sym do |value|
         
-        @records.select {|rec| find_record(rec[:body], value, x) }
+        a = @records.select {|rec| find_record(rec[:body], value, x) }
+        
+        a.map do |h|
+          RecordX.new(h[:body], self, h[:id], h[:created], h[:last_modified])
+        end
         
       end
 
       define_singleton_method ('find_by_' + x).to_sym do |value|
         
-        @records.find {|rec| find_record(rec[:body], value, x) }
+        h = @records.find {|rec| find_record(rec[:body], value, x) }
+        RecordX.new(h[:body], self, h[:id], h[:created], h[:last_modified])
         
       end
 
