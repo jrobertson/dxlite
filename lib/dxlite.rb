@@ -95,11 +95,14 @@ class DxLite
     
     id ||= @records.map {|x| x[:id].to_i}.max.to_i + 1
     h2 = custom_attributes
-    h = fields.map {|x| [x.to_sym, nil] }.to_h.merge(rawh)
-    @records << {id: id.to_s, created: h2[:created], last_modified: nil, 
-                 body: h}
+    h3 = fields.map {|x| [x.to_sym, nil] }.to_h.merge(rawh)
+    h = {id: id.to_s, created: h2[:created], last_modified: nil, body: h3}
+    @records << h
     
     save() if @autosave
+    
+    RecordX.new(h[:body], self, h[:id], h[:created], h[:last_modified])
+    
   end
   
   def fields()
@@ -283,7 +286,9 @@ class DxLite
       define_singleton_method ('find_by_' + x).to_sym do |value|
         
         h = @records.find {|rec| find_record(rec[:body], value, x) }
-        RecordX.new(h[:body], self, h[:id], h[:created], h[:last_modified])
+        return nil unless h
+        
+        RecordX.new(h[:body], self, h[:id], h[:created], h[:last_modified]) 
         
       end
 
