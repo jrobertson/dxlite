@@ -11,7 +11,7 @@ require 'rxfhelper'
 class DxLite
   using ColouredText
 
-  attr_accessor :summary, :filepath
+  attr_accessor :summary, :filepath, :schema
   attr_reader :records
 
   def initialize(s=nil, autosave: false, debug: false)
@@ -92,9 +92,25 @@ class DxLite
   end
   
   def create(rawh, id: nil, custom_attributes: {created: Time.now})
+
+    if id.nil? then
+      
+      puts '@records: ' + @records.inspect if @debug
+      
+      if @records then
+        id = @records.map {|x| x[:id].to_i}.max.to_i + 1
+      else
+        @records = []
+        id = 1
+      end
+      
+    end
     
-    id ||= @records.map {|x| x[:id].to_i}.max.to_i + 1
     h2 = custom_attributes
+    
+    fields = rawh.keys    
+    puts 'fields: ' + fields.inspect if @debug    
+
     h3 = fields.map {|x| [x.to_sym, nil] }.to_h.merge(rawh)
     h = {id: id.to_s, created: h2[:created], last_modified: nil, body: h3}
     @records << h
@@ -121,7 +137,9 @@ class DxLite
     if obj.is_a? Array then
       
       unless schema() then
+        puts 'obj.first: ' + obj.first.inspect if @debug
         cols = obj.first.keys.map {|c| c == 'id' ? 'uid' : c} 
+        puts 'after cols' if @debug
         self.schema = "items/item(%s)" % cols.join(', ')
       end
         
