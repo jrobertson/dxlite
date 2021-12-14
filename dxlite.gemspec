@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'dxlite'
-  s.version = '0.3.5'
+  s.version = '0.4.0'
   s.summary = 'Handles Dynarex documents (in JSON format) faster and ' + 
       'with less overheads.'
   s.authors = ['James Robertson']
@@ -10,6 +10,6 @@ Gem::Specification.new do |s|
   s.signing_key = '../privatekeys/dxlite.pem'
   s.cert_chain  = ['gem-public_cert.pem']
   s.license = 'MIT'
-  s.email = 'james@jamesrobertson.eu'
+  s.email = 'digital.robertson@gmail.com'
   s.homepage = 'https://github.com/jrobertson/dxlite'
 end
