@@ -30,6 +30,10 @@ class DxLite
 
     case type
 
+    when :dfs
+
+      read buffer
+
     when :file
 
       read buffer
@@ -340,7 +344,7 @@ class DxLite
     else
 
       h1 = JSON.parse(buffer, symbolize_names: true)
-      #puts 'h1:' + h1.inspect if @debug
+      puts 'h1:' + h1.inspect if @debug
 
       h = h1[h1.keys.first]
 
