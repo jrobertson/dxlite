@@ -3,6 +3,7 @@
 # file: dxlite.rb
 
 require 'c32'
+require 'kvx'
 require 'json'
 require 'recordx'
 require 'rxfhelper'
@@ -11,8 +12,8 @@ require 'rxfhelper'
 class DxLite
   using ColouredText
 
-  attr_accessor :summary, :filepath, :schema
-  attr_reader :records
+  attr_accessor :summary, :filepath
+  attr_reader :records, :schema
 
   def initialize(s=nil, autosave: false, debug: false)
 
@@ -40,37 +41,13 @@ class DxLite
 
     when :text
 
-      @summary = {schema: s}
-
+      new_summary(s)
 
     when :url
 
       read buffer
 
     end
-
-    puts '@summary: ' + @summary.inspect if @debug
-    @schema = @summary[:schema]
-
-    summary_attributes = {
-      recordx_type: 'dynarex',
-      default_key: @schema[/(?<=\()\w+/]
-    }
-
-    puts 'before merge' if @debug
-    @summary.merge!(summary_attributes)
-
-    summary = @summary[:schema][/(?<=\[)[^\]]+/]
-
-    if summary then
-
-      summary.split(/ *, */).each do |x|
-        @summary[x] = nil unless @summary[x]
-      end
-
-    end
-
-    make_methods()
 
   end
 
@@ -155,13 +132,15 @@ class DxLite
 
   def parse(obj=nil)
 
+    @records ||= []
+
     if obj.is_a? Array then
 
       unless schema() then
         puts 'obj.first: ' + obj.first.inspect if @debug
         cols = obj.first.keys.map {|c| c == 'id' ? 'uid' : c}
         puts 'after cols' if @debug
-        self.schema = "items/item(%s)" % cols.join(', ')
+        new_summary "items/item(%s)" % cols.join(', ')
       end
 
       obj.each do |x|
@@ -189,10 +168,10 @@ class DxLite
     summary[:schema] = summary['schema']
     %w(recordx_type format_mask schema).each {|x| summary.delete x}
 
-    schema = summary[:schema]
+    @schema = summary[:schema]
     puts 'schema: ' + schema.inspect if @debug
 
-    @fields = schema[/\(([^\)]+)/,1].split(/ *, +/)
+    @fields = @schema[/\(([^\)]+)/,1].split(/ *, +/)
     puts 'fields: ' + @fields.inspect if @debug
 
     @summary = summary
@@ -333,6 +312,34 @@ class DxLite
 
     end
 
+  end
+
+  def new_summary(schema)
+
+    @summary = {schema: schema}
+
+    puts '@summary: ' + @summary.inspect if @debug
+    @schema = @summary[:schema]
+
+    summary_attributes = {
+      recordx_type: 'dynarex',
+      default_key: schema[/(?<=\()\w+/]
+    }
+
+    puts 'before merge' if @debug
+    @summary.merge!(summary_attributes)
+
+    summary = @summary[:schema][/(?<=\[)[^\]]+/]
+
+    if summary then
+
+      summary.split(/ *, */).each do |x|
+        @summary[x] = nil unless @summary[x]
+      end
+
+    end
+
+    make_methods()
   end
 
   def read(buffer)
