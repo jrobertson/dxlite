@@ -371,6 +371,8 @@ class DxLite
 
     end
 
+    make_methods()
+
   end
 
 end
