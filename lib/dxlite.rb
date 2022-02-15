@@ -11,6 +11,7 @@ require 'rxfhelper'
 
 class DxLite
   using ColouredText
+  include RXFHelperModule
 
   attr_accessor :summary, :filepath
   attr_reader :records, :schema
@@ -191,7 +192,7 @@ class DxLite
     @filepath = file
 
     s = File.extname(file) == '.json' ? to_json() : to_xml()
-    File.write file, s
+    FileX.write file, s
   end
 
   def to_a()
