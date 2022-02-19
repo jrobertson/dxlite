@@ -9,6 +9,15 @@ require 'recordx'
 require 'rxfhelper'
 
 
+# DxLite can perform the following:
+#
+# * read or write an XML file
+# * read or write a JSON file (in Dynarex format)
+# * import an Array of records (Hash objects)
+#
+# note: It cannot read a Dynarex file in
+#       the raw Dynarex format (.txt plain text)
+
 class DxLite
   using ColouredText
   include RXFHelperModule
@@ -158,7 +167,7 @@ class DxLite
 
   def parse_xml(buffer)
 
-    doc = Rexle.new(buffer)
+    doc = Rexle.new(buffer.force_encoding('UTF-8'))
 
     asummary = doc.root.xpath('summary/*').map do |node|
       puts 'node: '  + node.xml.inspect if @debug
@@ -172,7 +181,7 @@ class DxLite
     @schema = summary[:schema]
     puts 'schema: ' + schema.inspect if @debug
 
-    @fields = @schema[/\(([^\)]+)/,1].split(/ *, +/)
+    @fields = @schema[/\(([^\)]+)/,1].split(/ *, */)
     puts 'fields: ' + @fields.inspect if @debug
 
     @summary = summary
