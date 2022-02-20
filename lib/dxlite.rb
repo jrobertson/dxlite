@@ -6,7 +6,7 @@ require 'c32'
 require 'kvx'
 require 'json'
 require 'recordx'
-require 'rxfhelper'
+require 'rxfreadwrite'
 
 
 # DxLite can perform the following:
@@ -20,7 +20,7 @@ require 'rxfhelper'
 
 class DxLite
   using ColouredText
-  include RXFHelperModule
+  include RXFReadWriteModule
 
   attr_accessor :summary, :filepath
   attr_reader :records, :schema
@@ -30,7 +30,7 @@ class DxLite
     @autosave, @debug = autosave, debug
 
     return unless s
-    buffer, type = RXFHelper.read(s)
+    buffer, type = RXFReader.read(s)
 
     @filepath = s if type == :file or type == :dfs
 
