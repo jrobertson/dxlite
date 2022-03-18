@@ -369,7 +369,7 @@ class DxLite
 
       h[:summary].each do |key, value|
 
-        if %i(recordx_type format_mask schema).include? key then
+        if %i(recordx_type format_mask schema default_key).include? key then
           @summary[key] = value
         else
           @summary[key.to_s] = value
