@@ -25,7 +25,7 @@ class DxLite
   attr_accessor :summary, :filepath
   attr_reader :records, :schema
 
-  def initialize(s=nil, autosave: false, debug: false)
+  def initialize(s=nil, autosave: false, order: 'ascending', debug: false)
 
     @autosave, @debug = autosave, debug
 
@@ -51,7 +51,7 @@ class DxLite
 
     when :text
 
-      new_summary(s)
+      new_summary(s, order)
 
     when :url
 
@@ -133,6 +133,17 @@ class DxLite
     @fields
   end
 
+  def record(id)
+
+    h = @records.find {|x| x[:id] == id }
+    return unless h
+    RecordX.new(h[:body], self, h[:id], h[:created], h[:last_modified])
+
+  end
+
+  alias find record
+  alias find_by_id record
+
   def inspect()
     "#<DxLite:%s @debug=%s, @summary=%s, ...>" % [object_id, @debug,
                                                   @summary.inspect]
@@ -213,11 +224,14 @@ class DxLite
     root_name = schema()[/^\w+/]
     record_name = schema()[/(?<=\/)[^\(]+/]
 
+    records = @records.map {|h| {record_name.to_sym => h} }
+    records.reverse! if @summary[:order] == 'descending'
+
     h = {
       root_name.to_sym =>
       {
         summary: @summary,
-        records: @records.map {|h| {record_name.to_sym => h} }
+        records: records
       }
     }
 
@@ -324,7 +338,7 @@ class DxLite
 
   end
 
-  def new_summary(schema)
+  def new_summary(schema, order)
 
     @summary = {schema: schema}
 
@@ -333,7 +347,8 @@ class DxLite
 
     summary_attributes = {
       recordx_type: 'dynarex',
-      default_key: schema[/(?<=\()\w+/]
+      default_key: schema[/(?<=\()\w+/],
+      order: order
     }
 
     puts 'before merge' if @debug
@@ -369,7 +384,8 @@ class DxLite
 
       h[:summary].each do |key, value|
 
-        if %i(recordx_type format_mask schema default_key).include? key then
+        if %i(recordx_type format_mask schema default_key order)\
+                           .include? key then
           @summary[key] = value
         else
           @summary[key.to_s] = value
