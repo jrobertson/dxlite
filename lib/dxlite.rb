@@ -94,8 +94,16 @@ class DxLite
     if key then
 
       r = records.find {|x| x[:body][key.to_sym] == rawh[key.to_sym]}
+
       if r then
+
+        # if the client is using create() instead of update() to update a
+        # record then update the record
+        #
+        r[:body].merge!(rawh)
         r[:last_modified] = Time.now.to_s
+        save() if @autosave
+
         return false
       end
 
@@ -225,13 +233,24 @@ class DxLite
     record_name = schema()[/(?<=\/)[^\(]+/]
 
     records = @records.map {|h| {record_name.to_sym => h} }
-    records.reverse! if @summary[:order] == 'descending'
+
+    a = if @summary[:order] == 'descending' then
+
+      records.sort_by do |x|
+        x[:last_modified] || x[:created]
+      end.reverse
+
+    else
+
+      records
+
+    end
 
     h = {
       root_name.to_sym =>
       {
         summary: @summary,
-        records: records
+        records: a
       }
     }
 
@@ -285,6 +304,7 @@ class DxLite
     if r then
 
       r[:body].merge!(obj)
+      r[:last_modified] = Time.now
       save() if @autosave
 
     end
