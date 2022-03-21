@@ -237,7 +237,22 @@ class DxLite
     a = if @summary[:order] == 'descending' then
 
       records.sort_by do |x|
-        x[:last_modified] || x[:created]
+
+        if @debug then
+          puts 'x: ' + x.inspect
+          puts 'created: ' + Date.parse(x[:post][:created]).inspect
+        end
+
+        created = DateTime.parse(x[:post][:created])
+
+        last_modified = if x[:post][:last_modified] then
+          DateTime.parse(x[:post][:last_modified])
+        else
+          nil
+        end
+
+        last_modified || created
+
       end.reverse
 
     else
