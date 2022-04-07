@@ -82,7 +82,7 @@ class DxLite
 
   end
 
-  def create(rawh, id: nil, custom_attributes: {created: Time.now})
+  def create(rawh, id: nil, custom_attributes: {created: Time.now.to_s})
 
     if @debug then
       puts 'create:: rawh: ' + rawh.inspect
@@ -319,7 +319,7 @@ class DxLite
     if r then
 
       r[:body].merge!(obj)
-      r[:last_modified] = Time.now
+      r[:last_modified] = Time.now.to_s
       save() if @autosave
 
     end
